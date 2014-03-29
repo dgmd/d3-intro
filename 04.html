@@ -1,0 +1,193 @@
+<html>
+<meta charset="utf-8">
+
+<head>
+    <script src="d3/d3.v3.js" type="text/javascript"></script>
+    <script src="keybinding.js"></script>
+
+    <style>
+        body {
+            font: 32px Arial;
+        }
+
+        svg {
+            background: black;
+        }
+
+        line {
+            stroke: steelblue;
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        #txt {
+            position: absolute;
+            color: #555;
+            left: 100;
+            top: 200;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="txt"></div>
+    <script>
+
+    var gridSize = 25;
+    var gridW = 16;
+    var gridH = 12;
+    var gridColor = d3.rgb(0,0,255);
+    var activeCol = 0.5;
+    var activeRow = 0.5;
+    var pactiveCol = activeCol;
+    var pactiveRow = activeRow;
+    var drag = false;
+
+    var txt = "";
+
+    var grid = [];
+
+    for (var row = 0; row < gridH; row++) {
+        for (var col = 0; col < gridW; col++) {
+            grid[row * gridW + col] = {
+                "x": col,
+                "y": row
+            };
+        }
+    }
+
+    var div = document.getElementById("txt");
+
+    var svg = d3.select("body")
+        .append("svg")
+        .attr("width", gridW * gridSize)
+        .attr("height", gridH * gridSize);
+
+    var circles = svg.selectAll("circle")
+        .data(grid)
+        .enter()
+        .append("circle");
+
+    circles.attr("cx", function(d) {
+            return (d["x"] + 0.5) * gridSize;
+        })
+        .attr("cy", function(d) {
+            return (d["y"] + 0.5) * gridSize;
+        })
+        .attr("r", 5)
+        .attr("fill", gridColor)
+        .attr("opacity", "0.5");
+
+    line = svg.append("line")
+        .attr("x1", pactiveCol * gridSize)
+        .attr("y1", pactiveRow * gridSize)
+        .attr("x2", activeCol  * gridSize)
+        .attr("y2", activeRow  * gridSize);
+
+    pointer = svg.append("circle")
+        .attr("cx", activeCol * gridSize)
+        .attr("cy", activeRow * gridSize)
+        .attr("r", 8)
+        .attr("fill", "white")
+        .attr("opacity", "0.5");
+
+    d3.select("body").call(d3.keybinding()
+        .on('←', moveFocus(-1, 0))
+        .on('↑', moveFocus(0, -1))
+        .on('→', moveFocus(1, 0))
+        .on('↓', moveFocus(0, 1))
+        );
+
+    function moveFocus(x, y) {
+        return function(event) {
+            event.preventDefault();
+            pactiveCol = activeCol;
+            pactiveRow = activeRow;
+            activeCol = Math.min(gridW - 0.5, Math.max(0.5, activeCol + x));
+            activeRow = Math.min(gridH - 0.5, Math.max(0.5, activeRow + y));
+        };
+    }
+
+   function setText() {
+        return function(event) {
+            event.preventDefault();
+            txt = String.fromCharCode(d3.event.keyCode);
+            // updateGrid();
+        };
+    }
+
+    d3.select("svg").on('mousedown', handleMouseDown);
+    d3.select("svg").on('mouseup', handleMouseUp);
+    d3.select("svg").on('mousemove', handleMouseMove); 
+
+    function handleMouseDown() {
+        pactiveCol = activeCol;
+        pactiveRow = activeRow;
+
+        activeCol = gridW - (Math.min(gridW, Math.max(0, Math.floor(d3.mouse(this)[0] / gridSize))) + 0.5);
+        activeRow = gridH - (Math.min(gridH, Math.max(0, Math.floor(d3.mouse(this)[1] / gridSize))) + 0.5);
+
+        gridColor = d3.rgb(Math.random()*255,Math.random()*255,Math.random()*255);
+        circles.attr("fill", gridColor);
+
+        drag = true;
+        // updateGrid();
+    }
+
+    function handleMouseUp() {
+        pactiveCol = activeCol;
+        pactiveRow = activeRow;
+
+        activeCol = Math.min(gridW, Math.max(0, Math.floor(d3.mouse(this)[0] / gridSize))) + 0.5;
+        activeRow = Math.min(gridH, Math.max(0, Math.floor(d3.mouse(this)[1] / gridSize))) + 0.5;
+
+        drag = false;
+        // updateGrid();
+    }
+
+    function handleMouseMove() {
+        pactiveCol = activeCol;
+        pactiveRow = activeRow;
+
+        activeCol = Math.min(gridW, Math.max(0, Math.floor(d3.mouse(this)[0] / gridSize))) + 0.5;
+        activeRow = Math.min(gridH, Math.max(0, Math.floor(d3.mouse(this)[1] / gridSize))) + 0.5;
+        if (drag) {
+            activeCol = gridW - activeCol;
+            activeRow = gridH - activeRow;
+        }
+        // updateGrid();
+    }
+
+    function updateGrid() {
+
+        circles.attr("r", function(d) {
+                var dx = activeCol - d["x"];
+                var dy = activeRow - d["y"];
+                return 0.5 * gridSize * Math.sqrt(dx*dx + dy*dy) / Math.sqrt(gridW*gridW + gridH*gridH);                    
+            });
+   
+        line.attr("x1", pactiveCol * gridSize)
+            .attr("y1", pactiveRow * gridSize)
+            .attr("x2", activeCol * gridSize)
+            .attr("y2", activeRow * gridSize);
+
+        pointer
+            .attr("cx", activeCol * gridSize)
+            .attr("cy", activeRow * gridSize)
+            .attr("r", 6)
+            .attr("fill", 'white');
+
+        div.style.left = (activeCol - 1)* gridSize;
+        div.style.top = (activeRow - 1) * gridSize;
+        div.style.color = gridColor;
+        div.style.opacity = 0.75;
+        div.innerHTML = txt;              
+    }
+
+    d3.timer(updateGrid)
+
+    </script>
+</body>
+
+</html>
